@@ -13,7 +13,7 @@ void Request::Initialize()
 	this->is_initialized = true;
 }
 
-struct Response Request::Get(const std::string& url, const std::map<std::string, std::string>& headers, const std::string* proxy = nullptr)
+struct Response Request::Get(const std::string& url, const std::map<std::string, std::string>& headers, const std::string* proxy)
 {
 	long status_code;
 	std::string response_holder;
@@ -69,10 +69,11 @@ struct Response Request::Get(const std::string& url, const std::map<std::string,
 	curl_easy_cleanup(curl);
 	response.raw_response = response_holder;
 	response.status_code = status_code;
+	return response;
 
 };
 
-struct Response Request::Post(const std::string& url, const std::string& data, const std::map<std::string, std::string>& headers, const std::string* proxy = nullptr)
+struct Response Request::Post(const std::string& url, const std::string& data, const std::map<std::string, std::string>& headers, const std::string* proxy)
 {
 	long status_code;
 	std::string response_holder;
@@ -127,6 +128,7 @@ struct Response Request::Post(const std::string& url, const std::string& data, c
 	curl_easy_cleanup(curl);
 	response.raw_response = response_holder;
 	response.status_code = status_code;
+	return response;
 }
 
 
@@ -185,6 +187,7 @@ struct Response Request::CustomRequest(const std::string& url, const std::string
 	curl_easy_cleanup(curl);
 	response.raw_response = response_holder;
 	response.status_code = status_code;
+	return response;
 }
 
 size_t write_to_string(void* ptr, size_t size, size_t count, void* stream)
