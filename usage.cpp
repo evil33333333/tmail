@@ -1,4 +1,5 @@
 #include <vector>
+#include <fstream>
 #include <iostream>
 #include <tmail/tmail.h>
 #include <tmail/inbox.h>
