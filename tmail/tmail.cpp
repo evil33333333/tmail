@@ -13,8 +13,8 @@ T_Mail::~T_Mail()
 }
 
 
-// Returns heap allocated
-T_Mail::Client* T_Mail::MakeClient(const std::string& email, const std::string& password, const std::string* proxy = nullptr)
+// Returns heap allocated memory
+T_Mail::Client* T_Mail::MakeClient(const std::string& email, const std::string& password, const std::string* proxy )
 {
 	T_Mail::Client* client = new T_Mail::Client();
 
@@ -55,7 +55,7 @@ T_Mail::Client* T_Mail::MakeClient(const std::string& email, const std::string& 
 	return client;
 }
 
-bool T_Mail::DeleteClient(T_Mail::Client* client, const std::string* proxy = nullptr)
+bool T_Mail::DeleteClient(T_Mail::Client* client, const std::string* proxy )
 {
 	// if the clients token and id isnt empty, we delete the account from the db
 	if (!client->token.empty() && !client->id.empty())
@@ -78,6 +78,7 @@ bool T_Mail::DeleteClient(T_Mail::Client* client, const std::string* proxy = nul
 
 	// If we did, continue with freeing the memory
 	delete client;
+	return true;
 }
 
 
@@ -94,7 +95,7 @@ void T_Mail::Client::InitializeClient()
 	};
 }
 
-struct Inbox T_Mail::Client::GetInbox(const std::string* proxy = nullptr)
+struct Inbox T_Mail::Client::GetInbox(const std::string* proxy)
 {
 	struct Inbox inbox;
 	this->InitializeClient();
@@ -146,7 +147,7 @@ struct Inbox T_Mail::Client::GetInbox(const std::string* proxy = nullptr)
 	
 }
 
-struct Message T_Mail::Client::OpenPreviewMessage(const PreviewMessage& previewMessage, const std::string* proxy = nullptr)
+struct Message T_Mail::Client::OpenPreviewMessage(const PreviewMessage& previewMessage, const std::string* proxy)
 {
 	struct Message message;
 	this->InitializeClient();
