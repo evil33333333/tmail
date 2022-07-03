@@ -4,14 +4,25 @@
 #include "inbox.h"
 #include <nlohmann/json.hpp>
 #include <format>
+#include <mutex>
 
 class T_Mail
 {
+
 private:
-	Request* request;
+	Request* request = nullptr;
 	std::map<std::string, std::string> headers;
+
+	void MoveRequestObject(
+		Request* tmail_request,
+		Request* tclient_request
+	);
 	
 public:
+	
+	static std::mutex mutex;
+	
+
 	class Client
 	{
 	public:
@@ -20,7 +31,7 @@ public:
 		std::string email;
 		std::string token;
 		std::string id;
-		Request* request;
+		Request* request = nullptr;
 
 		void InitializeClient();
 
@@ -40,6 +51,8 @@ public:
 		
 	};
 
+	void Initialize();
+
 	T_Mail::Client* MakeClient(
 		const std::string& username,
 		const std::string& password,
@@ -51,6 +64,4 @@ public:
 		const std::string* proxy = nullptr
 	);
 
-	
 };
-
