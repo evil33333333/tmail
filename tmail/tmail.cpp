@@ -1,29 +1,19 @@
 #include "tmail.h"
 
-T_Mail::T_Mail()
-{
-	this->request = new Request();
-	this->request->Initialize();
-}
-
-
-T_Mail::~T_Mail()
-{
-	delete this->request;
-}
-
-
 // Returns heap allocated memory
 T_Mail::Client* T_Mail::MakeClient(const std::string& email, const std::string& password, const std::string* proxy )
 {
 	T_Mail::Client* client = new T_Mail::Client();
 
-	std::string data = "{\"address\":\"" + email + "\",\"password\":\"" + password + "\"}";
+	std::string data = "{\"address\": \"" + email + "\", \"password\": \"" + password + "\"}";
 	std::map<std::string, std::string> headers = {
+		{ "Host", "api.mail.tm" },
+		{ "Content-Length", std::to_string(data.size()).c_str() },
 		{ "Content-Type", "application/json" },
+		{ "Connection", "keep-alive" },
 		{ "Accept", "application/json" },
 	};
-	Response response = this->request->Post("https://api.mail.tm/accounts/", data, headers, proxy);
+	Response response = this->request->Post("https://api.mail.tm/accounts", data, headers, proxy);
 	if (!response.ok || response.status_code != 201)
 	{
 		return client;
@@ -31,28 +21,40 @@ T_Mail::Client* T_Mail::MakeClient(const std::string& email, const std::string& 
 	client->email = email;
 	client->password = password;
 
-	response = this->request->Post("https://api.mail.tm/token/", data, headers, proxy);
+	response = this->request->Post("https://api.mail.tm/token", data, headers, proxy);
 	if (!response.ok || response.status_code != 200)
 	{
 		return client;
 	}
-
-	nlohmann::json j_response = nlohmann::json::parse(response.response_body);
+	nlohmann::json j_response = nlohmann::json::parse(response.text);
 	std::string token = j_response["token"].get<std::string>();
 	std::string id = j_response["id"].get<std::string>();
 
 	client->token = token;
 	client->id = id;
 	client->ok = true;
-	client->request = this->request;
+	this->MoveRequestObject(this->request, client->request);
 
 	this->headers = std::map<std::string, std::string>{
+			{ "Host", "api.mail.tm" },
+			{ "Connection", "keep-alive" },
 			{ "Content-Type", "application/json" },
 			{ "Accept", "application/json" },
 			{ "Authorization", std::format("Bearer {}", client->token) },
 	};
 
+	
+
 	return client;
+}
+
+void T_Mail::MoveRequestObject(Request* tmail_request, Request* tclient_request)
+{
+	std::lock_guard<std::mutex> lock(this->mutex);
+	tclient_request = tmail_request;
+	tmail_request = new Request;
+	tmail_request->Initialize();
+	
 }
 
 bool T_Mail::DeleteClient(T_Mail::Client* client, const std::string* proxy )
@@ -61,7 +63,7 @@ bool T_Mail::DeleteClient(T_Mail::Client* client, const std::string* proxy )
 	if (!client->token.empty() && !client->id.empty())
 	{
 		Response response = this->request->CustomRequest(
-			std::format("https://api.mail.tm/accounts/{}/", client->id),
+			std::format("https://api.mail.tm/accounts/{}", client->id),
 			"",
 			this->headers,
 			"DELETE",
@@ -106,7 +108,7 @@ struct Inbox T_Mail::Client::GetInbox(const std::string* proxy)
 		return inbox;
 	}
 
-	nlohmann::json j_response = nlohmann::json::parse(response.response_body);
+	nlohmann::json j_response = nlohmann::json::parse(response.text);
 
 	inbox.context = j_response["@context"].get<std::string>();
 	inbox.id = j_response["@id"].get<std::string>();
@@ -157,7 +159,7 @@ struct Message T_Mail::Client::OpenPreviewMessage(const PreviewMessage& previewM
 		return message;
 	}
 
-	nlohmann::json j_response = nlohmann::json::parse(response.response_body);
+	nlohmann::json j_response = nlohmann::json::parse(response.text);
 
 	message.id_path = j_response["@id"].get<std::string>();
 	message.type = j_response["@type"].get<std::string>();
@@ -185,5 +187,12 @@ struct Message T_Mail::Client::OpenPreviewMessage(const PreviewMessage& previewM
 	message.html = j_response["html.0"].get<std::string>();
 	
 	return message;
+
+}
+
+void T_Mail::Initialize()
+{
+	this->request = new Request;
+	this->request->Initialize();
 
 }
