@@ -15,7 +15,7 @@ void Request::Initialize()
 
 struct Response Request::Get(const std::string& url, const std::map<std::string, std::string>& headers, const std::string* proxy)
 {
-	uint64_t status_code;
+	uint64_t status_code{};
 	std::string response_holder;
 	std::string header_holder;
 	struct Response response;
@@ -34,7 +34,6 @@ struct Response Request::Get(const std::string& url, const std::map<std::string,
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_to_string);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_holder);
 		curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);
-		curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 		if (proxy)
 		{
 			curl_easy_setopt(curl, CURLOPT_PROXY, proxy->c_str());
@@ -139,7 +138,7 @@ struct Response Request::Post(const std::string& url, const std::string& data, c
 
 struct Response Request::CustomRequest(const std::string& url, const std::string& data, const std::map<std::string, std::string>& headers, const std::string& request_type, const std::string* proxy)
 {
-	uint64_t status_code;
+	uint64_t status_code{};
 	std::string response_holder;
 	std::string header_holder;
 	struct Response response;
@@ -163,8 +162,6 @@ struct Response Request::CustomRequest(const std::string& url, const std::string
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_to_string);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_holder);
 		curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, write_to_string);
-		curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);
-		curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 		curl_easy_setopt(curl, CURLOPT_WRITEHEADER, &header_holder);
 		CURLcode res = curl_easy_perform(curl);
 		if (res == CURLE_OK)
