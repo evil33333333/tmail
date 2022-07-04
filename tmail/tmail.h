@@ -7,22 +7,15 @@
 #include <mutex>
 
 class T_Mail
-{
+{	
 
 private:
 	Request* request = nullptr;
 	std::map<std::string, std::string> headers;
 
-	void MoveRequestObject(
-		Request* tmail_request,
-		Request* tclient_request
-	);
 	
 public:
 	
-	static std::mutex mutex;
-	
-
 	class Client
 	{
 	public:
@@ -32,8 +25,7 @@ public:
 		std::string token;
 		std::string id;
 		Request* request = nullptr;
-
-		void InitializeClient();
+		std::map<std::string, std::string> headers;
 
 
 		Inbox GetInbox(
@@ -47,7 +39,6 @@ public:
 	private:
 		
 		bool is_initialized = false;
-		std::map<std::string, std::string> headers;
 		
 	};
 
