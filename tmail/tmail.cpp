@@ -33,7 +33,8 @@ T_Mail::Client* T_Mail::MakeClient(const std::string& email, const std::string& 
 	client->token = token;
 	client->id = id;
 	client->ok = true;
-	this->MoveRequestObject(this->request, client->request);
+	client->request = new Request();
+	client->request->Initialize();
 
 	this->headers = std::map<std::string, std::string>{
 			{ "Host", "api.mail.tm" },
@@ -43,18 +44,17 @@ T_Mail::Client* T_Mail::MakeClient(const std::string& email, const std::string& 
 			{ "Authorization", std::format("Bearer {}", client->token) },
 	};
 
+
+	client->headers = std::map<std::string, std::string>{
+			{ "Host", "api.mail.tm" },
+			{ "Connection", "keep-alive" },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+			{ "Authorization", std::format("Bearer {}", client->token) },
+	};
 	
 
 	return client;
-}
-
-void T_Mail::MoveRequestObject(Request* tmail_request, Request* tclient_request)
-{
-	std::lock_guard<std::mutex> lock(this->mutex);
-	tclient_request = tmail_request;
-	tmail_request = new Request;
-	tmail_request->Initialize();
-	
 }
 
 bool T_Mail::DeleteClient(T_Mail::Client* client, const std::string* proxy )
@@ -84,65 +84,54 @@ bool T_Mail::DeleteClient(T_Mail::Client* client, const std::string* proxy )
 }
 
 
-void T_Mail::Client::InitializeClient()
-{
-	if (this->is_initialized)
-	{
-		return;
-	}
-	this->headers = std::map<std::string, std::string>{
-		{ "Content-Type", "application/json" },
-		{ "Accept", "application/json" },
-		{ "Authorization", std::format("Bearer {}", this->token) },
-	};
-}
-
 struct Inbox T_Mail::Client::GetInbox(const std::string* proxy)
 {
 	struct Inbox inbox;
-	this->InitializeClient();
-
+	uint32_t iterator = 0;
 	Response response = this->request->Get("https://api.mail.tm/messages", this->headers, proxy);
-	if (!response.ok || response.status_code != 200)
+	if (response.status_code != 200)
 	{
 		return inbox;
 	}
 
 	nlohmann::json j_response = nlohmann::json::parse(response.text);
 
-	inbox.context = j_response["@context"].get<std::string>();
-	inbox.id = j_response["@id"].get<std::string>();
-	inbox.collection_type = j_response["@type"].get<std::string>();
-	inbox.total_items = j_response["hydra:totalItems"].get<uint64_t>();
-	for (uint64_t i = 0; i < inbox.total_items; i++)
+	while (true)
 	{
-		struct PreviewMessage previewMessage;
-		previewMessage.id_path = j_response[std::format("hydra:member.{}.@id", i)].get<std::string>();
-		previewMessage.type = j_response[std::format("hydra:member.{}.@type", i)].get<std::string>();
-		previewMessage.id = j_response[std::format("hydra:member.{}.id", i)].get<std::string>();
-		previewMessage.account_id = j_response[std::format("hydra:member.{}.acccountId", i)].get<std::string>();
-		previewMessage.msg_id = j_response[std::format("hydra:member.{}.msgid", i)].get<std::string>();
-		previewMessage.subject = j_response[std::format("hydra:member.{}.subject", i)].get<std::string>();
-		previewMessage.intro = j_response[std::format("hydra:member.{}.intro", i)].get<std::string>();
-		previewMessage.seen = j_response[std::format("hydra:member.{}.seen", i)].get<bool>();
-		previewMessage.is_deleted = j_response[std::format("hydra:member.{}.isDeleted", i)].get<bool>();
-		previewMessage.has_attachments = j_response[std::format("hydra:member.{}.hasAttachments", i)].get<bool>();
-		previewMessage.size = j_response[std::format("hydra:member.{}.size", i)].get<uint64_t>();
-		previewMessage.download_url = j_response[std::format("hydra:member.{}.download_url", i)].get<std::string>();
-		previewMessage.creation_date = j_response[std::format("hydra:member.{}.createdAt", i)].get<std::string>();
-		previewMessage.updated_date = j_response[std::format("hydra:member.{}.updatedAt", i)].get<std::string>();
+		try
+		{
+			struct PreviewMessage previewMessage;
+			previewMessage.id = j_response[iterator]["id"].get<std::string>();
+			previewMessage.account_id = j_response[iterator]["accountId"].get<std::string>();
+			previewMessage.msg_id = j_response[iterator]["msgid"].get<std::string>();
+			previewMessage.subject = j_response[iterator]["subject"].get<std::string>();
+			previewMessage.intro = j_response[iterator]["intro"].get<std::string>();
+			previewMessage.seen = j_response[iterator]["seen"].get<bool>();
+			previewMessage.is_deleted = j_response[iterator]["isDeleted"].get<bool>();
+			previewMessage.has_attachments = j_response[iterator]["hasAttachments"].get<bool>();
+			previewMessage.size = j_response[iterator]["size"].get<uint64_t>();
+			previewMessage.download_url = j_response[iterator]["downloadUrl"].get<std::string>();
+			previewMessage.creation_date = j_response[iterator]["createdAt"].get<std::string>();
+			previewMessage.updated_date = j_response[iterator]["updatedAt"].get<std::string>();
 
-		previewMessage.from.address = j_response[std::format("hydra:member.{}.from.address", i)].get<std::string>();
-		previewMessage.from.name = j_response[std::format("hydra:member.{}.from.name", i)].get<std::string>();
+			previewMessage.from.address = j_response[iterator]["from"]["address"].get<std::string>();
+			previewMessage.from.name = j_response[iterator]["from"]["name"].get<std::string>();
 
-		PreviewMessage::To to;
-		to.address = j_response[std::format("hydra:member.{}.to.0.address", i)].get<std::string>();
-		to.name = j_response[std::format("hydra:member.{}.to.0.name", i)].get<std::string>();
-		previewMessage.to.push_back(to);
+			PreviewMessage::To to;
+			to.address = j_response[iterator]["to"][0]["address"].get<std::string>();
+			to.name = j_response[iterator]["to"][0]["name"].get<std::string>();
+			previewMessage.to.push_back(to);
 
-		inbox.messages.push_back(previewMessage);
+			inbox.preview_messages.push_back(previewMessage);
+			iterator++;
+		}
+		catch (const std::exception&) 
+		{
+			break;
+		}
 	}
 
+	
 	
 	inbox.ok = true;
 	return inbox;
@@ -152,8 +141,7 @@ struct Inbox T_Mail::Client::GetInbox(const std::string* proxy)
 struct Message T_Mail::Client::OpenPreviewMessage(const PreviewMessage& previewMessage, const std::string* proxy)
 {
 	struct Message message;
-	this->InitializeClient();
-	Response response = this->request->Get(std::format("https://api.mail.tm/{}", previewMessage.id_path), this->headers, proxy);
+	Response response = this->request->Get(std::format("https://api.mail.tm/messages/{}", previewMessage.id), this->headers, proxy);
 	if (!response.ok || response.status_code != 200)
 	{
 		return message;
@@ -161,10 +149,8 @@ struct Message T_Mail::Client::OpenPreviewMessage(const PreviewMessage& previewM
 
 	nlohmann::json j_response = nlohmann::json::parse(response.text);
 
-	message.id_path = j_response["@id"].get<std::string>();
-	message.type = j_response["@type"].get<std::string>();
 	message.id = j_response["id"].get<std::string>();
-	message.account_id = j_response["acccountId"].get<std::string>();
+	message.account_id = j_response["accountId"].get<std::string>();
 	message.msg_id = j_response["msgid"].get<std::string>();
 	message.subject = j_response["subject"].get<std::string>();
 	message.seen = j_response["seen"].get<bool>();
@@ -176,15 +162,15 @@ struct Message T_Mail::Client::OpenPreviewMessage(const PreviewMessage& previewM
 	message.updated_date = j_response["updatedAt"].get<std::string>();
 	message.is_flagged = j_response["flagged"].get<bool>();
 
-	message.from.address = j_response["from.address"].get<std::string>();
-	message.from.name = j_response["from.name"].get<std::string>();
+	message.from.address = j_response["from"]["address"].get<std::string>();
+	message.from.name = j_response["from"]["name"].get<std::string>();
 
 	Message::To to;
-	to.address = j_response["to.0.address"].get<std::string>();
-	to.name = j_response["to.0.name"].get<std::string>();
+	to.address = j_response["to"][0]["address"].get<std::string>();
+	to.name = j_response["to"][0]["name"].get<std::string>();
 	message.to.push_back(to);
 
-	message.html = j_response["html.0"].get<std::string>();
+	message.html = j_response["html"][0].get<std::string>();
 	
 	return message;
 
