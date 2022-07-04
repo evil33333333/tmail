@@ -19,7 +19,6 @@ struct Message
 	
 	std::string html;
 	std::string id_path;
-	std::string type;
 	std::string id;
 	std::string account_id;
 	std::string msg_id;
@@ -50,9 +49,6 @@ struct PreviewMessage
 		std::string address;
 		std::string name;
 	};
-
-	std::string id_path;
-	std::string type;
 	std::string id;
 	std::string account_id;
 	std::string msg_id;
