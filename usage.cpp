@@ -17,7 +17,7 @@ int main()
             Inbox inbox = client->GetInbox();
             if (inbox.ok)
             {
-                for (auto const& msg : inbox.messages)
+                for (auto const& msg : inbox.preview_messages)
                 {
                     if (msg.subject.find("verification code") != std::string::npos)
                     {
